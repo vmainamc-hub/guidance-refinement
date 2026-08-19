@@ -29,6 +29,7 @@ import { canonicalDigitState, contractPsychology } from "../sentinel/digit-psych
 import { operatorSpecialDigitAction } from "../sentinel/operator-special-digits";
 import { computeConvergence } from "../sentinel/convergence";
 import { operatorLearningLookup } from "../sentinel/operator-learning";
+import { immediateGuidanceLookup } from "../sentinel/immediate-guidance";
 import {
   hasValidatedEntryDigit,
   qualificationFor,
@@ -87,6 +88,9 @@ export function rankOpportunities(
   const rejected: ScanResult["rejected"] = [];
   // Derived once per ranking pass from the EXISTING persisted feedback store.
   const operatorLearning = operatorLearningLookup();
+  // CHANNEL 1: immediate operator guidance, snapshotted once so the whole pass
+  // is internally consistent. Bounded, expiring, attributed — never a veto.
+  const guidance = immediateGuidanceLookup();
 
 
   for (const intel of intels) {
@@ -195,6 +199,8 @@ export function rankOpportunities(
         clearanceBlocked: clearance.state === "BLOCKED",
         // Additive, bounded, market/contract-isolated operator learning.
         operator: operatorLearning,
+        // CHANNEL 1 — bounded, expiring immediate operator guidance per entry digit.
+        guidance,
         // Bounded, positional 1,000-tick digit psychology for this contract.
         canonicalPsychology: { state: canonicalState, contract: digitPsychology },
       });
@@ -477,6 +483,17 @@ export function rankOpportunities(
             .join(" "),
         });
       }
+      // CHANNEL 1 — immediate operator guidance for THIS market × contract.
+      // Temporary and bounded (±6); it is operator intent, not statistical proof.
+      const guidanceEffect = guidance.forCandidate(intel.symbol, c.id);
+      const guidancePoints = guidanceEffect.active ? guidanceEffect.points : 0;
+      if (guidanceEffect.active) {
+        factors.push({
+          label: "Immediate operator guidance",
+          points: guidancePoints,
+          detail: guidanceEffect.detail,
+        });
+      }
       const entryPointPoints = entryPoint.rankingDelta;
       factors.push({
         label: "Dynamic entry point",
@@ -596,6 +613,7 @@ export function rankOpportunities(
         operatorSpecialPoints +
         convergence.rankingDelta +
         survivalInf.points +
+        guidancePoints +
         entryTriggerPoints;
 
       ranked.push({
