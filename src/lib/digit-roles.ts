@@ -1,21 +1,21 @@
 // DIGIT ROLE ASSIGNMENT — single source of truth for the five sensitive
-// digits (hot, hot 2, cold, cold 2, rising) and for the barrier-digit colour
-// veto.
+// digits (hot, hot 2, cold, cold 2, rising).
 //
-// OPERATOR LAW: digits 2, 3, 6 and 7 may NEVER carry a distinguished colour
-// shade. None of the five sensitive roles — green bar (most appearing),
-// second green bar (2nd most appearing), red bar (least appearing), second red
-// bar (2nd least appearing) and the most-increasing (rising) shade — may land
-// on them. They are the bot's own barrier digits, so colouring them would read
-// as an edge where none exists. When a vetoed digit would have won a role, the
-// role passes to the next eligible digit instead.
+// RETIRED: the legacy barrier-digit veto (digits 2, 3, 6, 7 could never carry a
+// distinguished colour role, and their raw dominance acted as a hard veto in
+// the bot signal layer). Measured evidence — conditional probability, execution
+// survival and operator feedback — now decides. The exports below are kept as
+// inert no-ops so existing callers keep compiling and behave as if no digit is
+// ever vetoed.
 
-/** Digits that can never hold a distinguished colour role. */
-export const VETOED_ROLE_DIGITS: readonly number[] = [2, 3, 6, 7];
+/** RETIRED — intentionally empty. No digit is excluded from a colour role. */
+export const VETOED_ROLE_DIGITS: readonly number[] = [];
 
-export function isVetoedRoleDigit(d: number): boolean {
-  return VETOED_ROLE_DIGITS.includes(d);
+/** RETIRED — always false. */
+export function isVetoedRoleDigit(_d: number): boolean {
+  return false;
 }
+
 
 export type DigitRole = "HOT" | "HOT 2" | "COLD" | "COLD 2" | "RISING";
 
