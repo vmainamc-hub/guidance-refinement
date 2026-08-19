@@ -264,17 +264,27 @@ export function signalKey(item: RankedOpportunity): string {
   return `${item.symbol}:${item.contract.id}:${d}:${item.signal?.state ?? item.entryPoint.status}`;
 }
 
+/**
+ * A pending trade belongs to a market × contract × ENTRY DIGIT. Ignoring the
+ * entry digit made a second, genuinely different setup on the same contract
+ * look already-marked, so its outcome was never recorded.
+ */
 export function pendingFor(item: RankedOpportunity): TradeRecord | null {
   const s = load();
+  const d = item.entryPoint.preferred?.digit ?? null;
+  const waiting = item.signal?.waitForEntry ?? !item.entryPoint.preferred;
+  const entryDigit = d !== null && !waiting ? d : null;
   return (
     s.trades.find(
       (t) =>
         t.outcome === "PENDING" &&
         t.snapshot.symbol === item.symbol &&
-        t.snapshot.contract === item.contract.id,
+        t.snapshot.contract === item.contract.id &&
+        t.snapshot.entryDigit === entryDigit,
     ) ?? null
   );
 }
+
 
 /** REFINEMENT: only an explicit user action creates a trade. */
 export function markTraded(item: RankedOpportunity): TradeRecord {
