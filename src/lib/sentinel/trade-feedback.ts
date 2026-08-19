@@ -291,8 +291,12 @@ export function pendingFor(item: RankedOpportunity): TradeRecord | null {
 
 /** REFINEMENT: only an explicit user action creates a trade. */
 export function markTraded(item: RankedOpportunity): TradeRecord {
+  const key = signalKey(item);
   const existing = pendingFor(item);
-  if (existing) return existing; // never duplicate a pending trade
+  // Identity is market × contract × entry digit × displayed-signal key: the same
+  // displayed signal is marked once, a different one is a different trade.
+  if (existing && (existing.signalKey === undefined || existing.signalKey === key))
+    return existing;
   const s = load();
   const rec: TradeRecord = {
     id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
@@ -301,11 +305,13 @@ export function markTraded(item: RankedOpportunity): TradeRecord {
     resolvedAt: null,
     enteredAfterMs: null,
     snapshot: snapshotOf(item),
+    signalKey: key,
   };
   s.trades.push(rec);
   persist();
   return rec;
 }
+
 
 /** WIN / LOSS finalise learning exactly once. CANCELLED never trains it. */
 export function resolveTrade(id: string, outcome: "WIN" | "LOSS" | "CANCELLED") {
