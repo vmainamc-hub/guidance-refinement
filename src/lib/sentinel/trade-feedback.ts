@@ -7,6 +7,8 @@
 // outcome), and aggregates confirmed outcomes into market/contract-isolated
 // learning that survives reloads.
 import type { RankedOpportunity } from "../apex/types";
+import { recordFeedbackDirective, removeDirectivesBySource } from "./immediate-guidance";
+
 
 const KEY = "sentinel.trade-feedback.v1";
 const MAX_TRADES = 1000;
