@@ -85,8 +85,11 @@ export interface TradeRecord {
   /** Ticks/seconds waited inside the validity window before the outcome. */
   enteredAfterMs: number | null;
   snapshot: TradeSnapshot;
+  /** Displayed-signal identity at the instant of marking (optional, legacy rows lack it). */
+  signalKey?: string;
   /** Optional written operator feedback. Never rewrites `snapshot`. */
   feedback?: TradeFeedbackNote | null;
+
 }
 
 interface Store {
