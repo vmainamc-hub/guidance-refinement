@@ -65,8 +65,9 @@ export function evaluateExecutionSurvival(
   if (input.entryDigit === null || input.entryDigit < 0) return null;
   if (input.digits.length < 300) return null;
   const key = `${input.symbol}|${input.contract}|${input.entryDigit}`;
+  const fingerprint = fingerprintBuffer(input.digits, input.winners);
   const hit = cache.get(key);
-  if (hit && hit.len === input.digits.length) return hit.report;
+  if (hit && hit.fingerprint === fingerprint) return hit.report;
   const report = computeExecutionSurvival({
     symbol: input.symbol,
     contract: input.contract,
@@ -76,7 +77,8 @@ export function evaluateExecutionSurvival(
     entryDigit: input.entryDigit,
     config: input.config,
   });
-  cache.set(key, { len: input.digits.length, report });
+  cache.set(key, { fingerprint, report });
+
   return report;
 }
 
