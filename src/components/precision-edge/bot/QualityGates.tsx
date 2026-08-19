@@ -54,13 +54,16 @@ export function QualityGates({
       pass: quality.edgeBalance.imbalancePp <= cfg.maxEdgeImbalance,
     },
     {
-      label: `Digits ${VETOED_ROLE_DIGITS.join(" / ")}`,
+      label: VETOED_ROLE_DIGITS.length
+        ? `Digits ${VETOED_ROLE_DIGITS.join(" / ")}`
+        : "Barrier-digit veto",
       measured: quality.vetoedDominantDigits.length
         ? `dominant: ${quality.vetoedDominantDigits.join(", ")}`
-        : "not distinguished",
-      limit: "never shaded",
+        : "retired — measured evidence decides",
+      limit: VETOED_ROLE_DIGITS.length ? "never shaded" : "no veto",
       pass: quality.vetoedDominantDigits.length === 0,
     },
+
   ];
 
   return (
