@@ -563,6 +563,30 @@ export type Database = {
         }
         Relationships: []
       }
+      sentinel_operator_feedback: {
+        Row: {
+          item_id: string
+          kind: string
+          payload: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          item_id: string
+          kind: string
+          payload: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          item_id?: string
+          kind?: string
+          payload?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sentinel_sim_trades: {
         Row: {
           client_key: string | null
@@ -585,7 +609,7 @@ export type Database = {
           source: string
           stake: number
           symbol: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           client_key?: string | null
@@ -608,7 +632,7 @@ export type Database = {
           source?: string
           stake?: number
           symbol: string
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           client_key?: string | null
@@ -631,7 +655,7 @@ export type Database = {
           source?: string
           stake?: number
           symbol?: string
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
