@@ -196,16 +196,19 @@ export function survivalHeadline(report: ExecutionSurvivalReport | null): string
 // ── LEVEL 2.5 — ENTRY TRIGGER INTELLIGENCE ────────────────────────────────
 // Which PRINT of the entry digit the operator should actually trigger on. Same
 // contract as Level 2: memoised per market × contract × entry digit × buffer
-// length, bounded influence, and honest about an immature sample.
+// CONTENT (never length alone), bounded influence, and honest about an immature
+// sample. Immediate operator guidance can change what the operator should be
+// told, so the live guidance revision participates in the key as well.
 
 import {
   computeEntryTrigger,
   type EntryTriggerConfig,
   type EntryTriggerReport,
 } from "./entry-trigger";
+import { guidanceRevision } from "./immediate-guidance";
 
 interface TriggerCacheRow {
-  len: number;
+  fingerprint: string;
   report: EntryTriggerReport;
 }
 const triggerCache = new Map<string, TriggerCacheRow>();
@@ -235,8 +238,9 @@ export function evaluateEntryTrigger(
   if (input.entryDigit === null || input.entryDigit < 0) return null;
   if (input.digits.length < 300) return null;
   const key = `${input.symbol}|${input.contract}|${input.entryDigit}`;
+  const fingerprint = `${fingerprintBuffer(input.digits, input.winners)}|g${guidanceRevision()}`;
   const hit = triggerCache.get(key);
-  if (hit && hit.len === input.digits.length) return hit.report;
+  if (hit && hit.fingerprint === fingerprint) return hit.report;
   const report = computeEntryTrigger({
     symbol: input.symbol,
     contract: input.contract,
@@ -246,6 +250,7 @@ export function evaluateEntryTrigger(
     entryDigit: input.entryDigit,
     config: input.config,
   });
-  triggerCache.set(key, { len: input.digits.length, report });
+  triggerCache.set(key, { fingerprint, report });
   return report;
+
 }
