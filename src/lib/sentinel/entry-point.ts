@@ -161,7 +161,8 @@ function transitionMatrix(digits: number[]): number[][] {
 }
 
 interface MatrixCache {
-  len: number;
+  /** Content fingerprint of the buffer the matrices were built from. */
+  fingerprint: string;
   full: number[][];
   older: number[][];
   newer: number[][];
@@ -169,12 +170,28 @@ interface MatrixCache {
 
 const matrixCache = new Map<string, MatrixCache>();
 
+/**
+ * A length-only key is unsafe: a rolling buffer keeps its length while its
+ * CONTENT changes every tick, so stale matrices would be served forever. The
+ * key is therefore content-derived — length plus the head/tail of the buffer
+ * plus a cheap rolling checksum, so any mutation invalidates it.
+ */
+function fingerprintDigits(digits: number[]): string {
+  const n = digits.length;
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum = (sum * 31 + digits[i]) % 2147483647;
+  const head = digits.slice(0, 8).join("");
+  const tail = digits.slice(-8).join("");
+  return `${n}:${head}:${tail}:${sum}`;
+}
+
 function matricesFor(symbol: string, digits: number[]): MatrixCache {
+  const fingerprint = fingerprintDigits(digits);
   const cached = matrixCache.get(symbol);
-  if (cached && cached.len === digits.length) return cached;
+  if (cached && cached.fingerprint === fingerprint) return cached;
   const half = Math.floor(digits.length / 2);
   const built: MatrixCache = {
-    len: digits.length,
+    fingerprint,
     full: transitionMatrix(digits),
     older: transitionMatrix(digits.slice(0, half + 1)),
     newer: transitionMatrix(digits.slice(half)),
@@ -182,6 +199,7 @@ function matricesFor(symbol: string, digits: number[]): MatrixCache {
   matrixCache.set(symbol, built);
   return built;
 }
+
 
 function conditional(row: number[], winners: number[]): { n: number; wins: number } {
   let n = 0;
