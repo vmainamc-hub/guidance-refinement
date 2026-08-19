@@ -20,6 +20,7 @@ import type { ContractEval, MarketIntel } from "../apex/types";
 import type { EntryRecommendation } from "../apex/entry-conditions";
 import type { DangerComposition } from "./danger";
 import type { OperatorLearningLookup, OperatorPattern } from "./operator-learning";
+import type { ImmediateGuidanceLookup } from "./immediate-guidance";
 import type { CanonicalDigitState, ContractPsychology } from "./digit-psychology";
 import { entryDigitPsychologyBias } from "./digit-psychology";
 
@@ -125,6 +126,13 @@ export interface EntryPointInputs {
    * and it can never bypass hard invalidation below.
    */
   operator?: OperatorLearningLookup | null;
+  /**
+   * OPTIONAL, BOUNDED, EXPIRING. Channel-1 immediate operator guidance for THIS
+   * market × contract. It differentiates candidate ENTRY DIGITS by what the
+   * operator just reported; it can never fabricate an entry or bypass hard
+   * invalidation, and every directive expires on its own.
+   */
+  guidance?: ImmediateGuidanceLookup | null;
   /**
    * OPTIONAL, BOUNDED. Canonical 1,000-tick digit-frequency psychology plus the
    * positional reading for THIS contract. It differentiates candidate digits by
@@ -246,6 +254,7 @@ export function resetEntryPointMemory(): void {
 
 export function computeEntryPoint(inputs: EntryPointInputs): EntryPointReport {
   const { intel, contract, digits, danger, entry, clearanceBlocked, operator } = inputs;
+  const guidance = inputs.guidance ?? null;
   const canonicalPsychology = inputs.canonicalPsychology ?? null;
   const key = `${intel.symbol}:${contract.id}`;
   const winners = contract.winners;
@@ -440,6 +449,29 @@ export function computeEntryPoint(inputs: EntryPointInputs): EntryPointReport {
           drivers.push(
             `validated operator feedback supports this entry (confidence ${top.feedbackConfidence}/100)`,
           );
+      }
+    }
+
+    // ── 10b. IMMEDIATE operator guidance for this entry digit (Channel 1) ──
+    // Bounded (±6), decaying, expiring, and clearly labelled as operator intent
+    // rather than validated statistics.
+    if (guidance) {
+      const gPts = guidance.entryAdjustment(intel.symbol, contract.id, d);
+      const gDirectives = guidance.forDigit(intel.symbol, contract.id, d);
+      if (gPts !== 0 && gDirectives.length) {
+        factors.push({
+          code: "GUIDANCE",
+          label: "Immediate operator guidance",
+          points: gPts,
+          detail:
+            `Temporary operator directive(s) on ${intel.symbol} · ${contract.label} · entry digit ${d}: ` +
+            gDirectives.map((x) => `${x.label} ("${x.text}")`).join(" · ") +
+            `. Operator intent, not statistical proof — it decays and expires.`,
+        });
+        if (gPts <= -0.5)
+          cautions.push(`the operator has just reported a problem with entry digit ${d}`);
+        if (gPts >= 0.5)
+          drivers.push(`the operator has just reported this entry digit as working`);
       }
     }
 
