@@ -368,6 +368,14 @@ export function saveTradeFeedback(
     text: clean,
     category,
   };
+  // CHANNEL 1: the note also becomes a bounded, expiring immediate directive.
+  // It never becomes an outcome and never touches Channel-2 statistics.
+  recordFeedbackDirective({
+    sourceId: `trade:${tradeId}`,
+    text: clean,
+    category,
+    snapshot: rec.snapshot,
+  });
   persist();
   return rec.feedback;
 }
@@ -377,6 +385,7 @@ export function deleteTradeFeedback(tradeId: string) {
   const rec = s.trades.find((t) => t.id === tradeId);
   if (!rec || !rec.feedback) return;
   rec.feedback = null;
+  removeDirectivesBySource(`trade:${tradeId}`);
   persist();
 }
 
@@ -402,6 +411,12 @@ export function addObservation(
     snapshot: snapshotOf(item),
   };
   s.observations.push(obs);
+  recordFeedbackDirective({
+    sourceId: `obs:${obs.observationId}`,
+    text: clean,
+    category,
+    snapshot: obs.snapshot,
+  });
   persist();
   return obs;
 }
@@ -419,6 +434,13 @@ export function updateObservation(
   obs.text = clean;
   if (category !== undefined) obs.category = category;
   obs.updatedAt = Date.now();
+  // A corrected note SUPERSEDES its own earlier directive.
+  recordFeedbackDirective({
+    sourceId: `obs:${observationId}`,
+    text: clean,
+    category: obs.category,
+    snapshot: obs.snapshot,
+  });
   persist();
 }
 
@@ -427,8 +449,10 @@ export function deleteObservation(observationId: string) {
   const i = s.observations.findIndex((o) => o.observationId === observationId);
   if (i < 0) return;
   s.observations.splice(i, 1);
+  removeDirectivesBySource(`obs:${observationId}`);
   persist();
 }
+
 
 export function listObservations(): SignalObservation[] {
   return [...load().observations].reverse();
