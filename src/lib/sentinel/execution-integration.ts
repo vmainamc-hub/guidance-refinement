@@ -31,11 +31,20 @@ export interface SurvivalEvaluationInput {
   config?: Partial<ExecutionSurvivalConfig>;
 }
 
-// Recomputing the full sequence scan on every 1s re-rank is wasteful and the
-// answer cannot change unless the buffer grew, so the report is memoised on
-// (market × contract × entry digit × buffer length).
+// Recomputing the full sequence scan on every 1s re-rank is wasteful, so the
+// report is memoised on (market × contract × entry digit). A length-only
+// freshness test is UNSAFE for a rolling buffer whose length is capped: the
+// content changes every tick while the length stays constant, so the key is a
+// content fingerprint instead.
+export function fingerprintBuffer(digits: number[], winners: number[]): string {
+  const n = digits.length;
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum = (sum * 31 + digits[i]) % 2147483647;
+  return `${n}:${digits.slice(0, 8).join("")}:${digits.slice(-8).join("")}:${sum}:${winners.join("")}`;
+}
+
 interface CacheRow {
-  len: number;
+  fingerprint: string;
   report: ExecutionSurvivalReport;
 }
 const cache = new Map<string, CacheRow>();
@@ -43,6 +52,7 @@ const cache = new Map<string, CacheRow>();
 export function resetExecutionSurvivalCache(): void {
   cache.clear();
 }
+
 
 /**
  * Level-2 report for one candidate, or null when there is no validated entry
