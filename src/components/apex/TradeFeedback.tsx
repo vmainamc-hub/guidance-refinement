@@ -22,9 +22,45 @@ import {
   subscribeTradeFeedback,
   type TradeRecord,
 } from "@/lib/sentinel/trade-feedback";
+import {
+  guidanceRevision,
+  immediateGuidanceLookup,
+  subscribeGuidance,
+} from "@/lib/sentinel/immediate-guidance";
 
 export function useTradeFeedbackVersion() {
   return useSyncExternalStore(subscribeTradeFeedback, feedbackVersion, () => 0);
+}
+
+export function useGuidanceRevision() {
+  return useSyncExternalStore(subscribeGuidance, guidanceRevision, () => 0);
+}
+
+/**
+ * CHANNEL 1 chip — shows that the operator's own note is influencing this
+ * market × contract right now, and that the influence expires by itself.
+ */
+export function GuidanceChip({ item }: { item: RankedOpportunity }) {
+  useGuidanceRevision();
+  const effect = immediateGuidanceLookup().forCandidate(item.symbol, item.contract.id);
+  if (!effect.active) return null;
+  const soonest = Math.min(...effect.directives.map((d) => d.expiresAt));
+  const mins = Math.max(1, Math.round((soonest - Date.now()) / 60000));
+  return (
+    <div
+      title={effect.detail}
+      className="inline-flex flex-wrap items-center gap-2 rounded-full border border-[var(--warn)]/60 bg-background/60 px-2.5 py-1"
+    >
+      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--warn)]">
+        Operator guidance active
+      </span>
+      <span className="font-mono text-[10px] text-muted-foreground">
+        {effect.directives.length} directive{effect.directives.length > 1 ? "s" : ""} ·{" "}
+        {effect.points >= 0 ? "+" : ""}
+        {effect.points.toFixed(1)} pts · expires in {mins}m
+      </span>
+    </div>
+  );
 }
 
 function fmtTime(ts: number) {
@@ -133,6 +169,7 @@ export default function TradeFeedback({ item }: { item: RankedOpportunity }) {
 
   return (
     <div className="mt-3 space-y-2">
+      <GuidanceChip item={item} />
       {pending ? (
         <PendingCard trade={pending} />
       ) : (
