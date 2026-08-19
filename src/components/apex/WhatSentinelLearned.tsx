@@ -4,7 +4,7 @@
 // inference is not mixed in, and nothing is claimed when the sample is too small.
 import { useMemo, useState } from "react";
 import { SectionTitle } from "@/components/apex/EvidencePanel";
-import { useTradeFeedbackVersion } from "@/components/apex/TradeFeedback";
+import { useGuidanceRevision, useTradeFeedbackVersion } from "@/components/apex/TradeFeedback";
 import {
   allLearning,
   feedbackHistory,
@@ -18,6 +18,7 @@ import {
 } from "@/lib/sentinel/trade-feedback";
 import { reportablePatterns, type OperatorPattern } from "@/lib/sentinel/operator-learning";
 import OperatorLearningSummary from "@/components/apex/OperatorLearningSummary";
+import { activeDirectives } from "@/lib/sentinel/immediate-guidance";
 
 const card = "rounded-xl border border-border bg-card p-4";
 
@@ -239,6 +240,58 @@ function FeedbackHistory() {
   );
 }
 
+/**
+ * THE TWO CHANNELS, SHOWN SEPARATELY.
+ * Channel 1 (here) is immediate operator guidance: it acts on the next ranking
+ * cycle, is bounded and expires. Channel 2 below is validated statistical
+ * learning from confirmed WIN/LOSS outcomes. They are never merged.
+ */
+function ImmediateGuidancePanel() {
+  useGuidanceRevision();
+  const live = activeDirectives();
+  return (
+    <div className={card}>
+      <SectionTitle hint="acts now · expires by itself">
+        Immediate operator guidance
+      </SectionTitle>
+      {live.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No operator directive is active. Written feedback you give on a signal takes effect on the
+          next ranking cycle, stays bounded, and expires on its own — it never becomes a WIN or a
+          LOSS.
+        </p>
+      ) : (
+        <ul className="space-y-1.5 text-[11px]">
+          {live.map((d) => (
+            <li key={d.id} className="rounded border border-border/60 p-2">
+              <p className="font-mono text-[11px]">
+                {d.symbol} · {d.contractLabel}
+                {(d.targetDigit ?? d.entryDigit) !== null
+                  ? ` · entry digit ${d.targetDigit ?? d.entryDigit}`
+                  : ""}
+                {d.category ? ` · ${d.category}` : ""}
+              </p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--warn)]">
+                {d.label}
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                Ranking {d.rankingAdjustment > 0 ? "+" : ""}
+                {d.rankingAdjustment} · entry digit {d.entryDigitAdjustment > 0 ? "+" : ""}
+                {d.entryDigitAdjustment} · expires {new Date(d.expiresAt).toLocaleTimeString()}
+              </p>
+              <p className="mt-1">&ldquo;{d.text}&rdquo;</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-2 text-[10px] text-muted-foreground">
+        Operator intent, not statistical proof. Validated learning from confirmed outcomes is shown
+        separately below.
+      </p>
+    </div>
+  );
+}
+
 export default function WhatSentinelLearned() {
   useTradeFeedbackVersion();
   const [symbol, setSymbol] = useState("ALL");
@@ -253,6 +306,7 @@ export default function WhatSentinelLearned() {
 
   return (
     <section className="space-y-4">
+      <ImmediateGuidancePanel />
       <div className={card}>
         <SectionTitle hint="confirmed trades only">Today&apos;s learning</SectionTitle>
         <p className="font-mono text-xs">
